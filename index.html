@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>newpipe csv fixer</title>
+  </head>
+  <body>
+    <h1>newpipe csv->json fixer</h1>
+    <h2>attach subscriptions.csv file</h2>
+    <input type="file" onchange="fileChange(event)" />
+    <div id="link-container"></div>
+
+    <script src="papaparse.min.js"></script>
+    <script>
+      var jsonFile = null;
+      var linkContainerEl = document.getElementById("link-container");
+
+      function makeTextFile(json) {
+        var data = new Blob([json], { type: "application/json" });
+        if (jsonFile !== null) URL.revokeObjectURL(jsonFile);
+        jsonFile = URL.createObjectURL(data);
+        return jsonFile;
+      }
+
+      function fileChange(event) {
+        var fileEl = event.target;
+        var file = fileEl.files[0];
+
+        if (file.type === "text/csv") {
+          Papa.parse(file, {
+            complete: function (results) {
+              var subscriptions = [];
+              const rows = results.data;
+              for (let i = 1; i < rows.length; i++) {
+                subscriptions.push({
+                  snippet: {
+                    resourceId: { channelId: rows[i][0] },
+                    title: rows[i][2],
+                  },
+                });
+              }
+              var blobUrl = makeTextFile(JSON.stringify(subscriptions));
+              linkContainerEl.innerHTML =
+                '<br><a href="' +
+                blobUrl +
+                '" download="subscriptions.json">Download generated subscriptions.json</a>';
+            },
+            error: function () {
+              linkContainerEl.innerHTML = "";
+              alert("Error parsing csv file");
+            },
+          });
+        } else {
+          linkContainerEl.innerHTML = "";
+          alert("Must upload a csv file");
+        }
+      }
+    </script>
+    <script>
+      // livereload
+      if (location.protocol === "http:") {
+        let prevHtml = null;
+        const checkForChanges = () => {
+          window
+            .fetch("/index.html", {
+              headers: {
+                pragma: "no-cache",
+                "cache-control": "no-cache",
+              },
+            })
+            .then((res) => res.text())
+            .then((html) => {
+              if (prevHtml === null) {
+                prevHtml = html;
+              } else if (prevHtml !== html) {
+                location.reload();
+              }
+            });
+        };
+        checkForChanges();
+        setInterval(checkForChanges, 1000);
+      }
+    </script>
+  </body>
+</html>
